@@ -68,10 +68,10 @@ class SkillDataset(Dataset):
             logging.info(f"First few values of created_datetime: {self.code_df['created_datetime'].head()}")
 
 
-            # 숫자(타임스탬프)인지 확인
+        
             if pd.api.types.is_numeric_dtype(self.code_df['created_datetime']):
                 logging.info(f"created_datetime appears to be numeric (likely timestamp)")
-                # 타임스탬프의 범위 확인 (밀리초 vs 초)
+
                 min_timestamp = self.code_df['created_datetime'].min()
                 max_timestamp = self.code_df['created_datetime'].max()
                 logging.info(f"Timestamp range: {min_timestamp} to {max_timestamp}")
@@ -82,7 +82,6 @@ class SkillDataset(Dataset):
                     logging.info(f"Timestamps appear to be in seconds")
             else:
                 logging.info(f"created_datetime appears to be non-numeric (likely string)")
-                # 문자열 형식 샘플 출력
                 logging.info("Sample datetime strings:")
                 logging.info(f"{self.code_df['created_datetime'].sample(5).tolist()}")
 
@@ -91,7 +90,7 @@ class SkillDataset(Dataset):
             Timestamps appear to be in milliseconds
             """
 
-            # 파싱 시도
+            # try parsing
             try:
                 parsed_dates = pd.to_datetime(self.code_df['created_datetime']/1000, unit='s', utc=True)
                 logging.info(f"Successfully parsed as datetime")
@@ -112,12 +111,11 @@ class SkillDataset(Dataset):
 
         
         """
-        code submission data's time format: Unix time (밀리초 단위)
-        desired output format: pandas Timestamp (UTC 시간대)
-        1) 'created_datetime' 열의 밀리초 단위 Unix 타임스탬프를 pandas Timestamp 객체로 변환. 
-        2) /1000을 통해 밀리초를 초 단위로 변환하고, unit='s'로 초 단위임을 지정. 
-        3) utc=True로 UTC 시간대로 설정. 
-        그 후 두 파일의 시간대 형식을 맞춤. -> 비교를 용이하게 하기 위하여.
+        Convert the 'created_datetime' column's millisecond Unix timestamp to a pandas Timestamp object.
+        1) Divide by 1000 to convert milliseconds to seconds.
+        2) Specify unit='s' to indicate the data is in seconds.
+        3) Use utc=True to set the timezone to UTC.
+        After conversion, align the timezone formats of both files for easier comparison.
         """
         self.code_df['created_datetime'] = pd.to_datetime(self.code_df['created_datetime'] /1000, unit='s', utc=True)
         self.help_center_log['post_created_datetime'] = pd.to_datetime(self.help_center_log['post_created_datetime'])
@@ -141,52 +139,60 @@ class SkillDataset(Dataset):
         self.projection_code = ProjectionLayer(768, 512).to(device)
         self.projection_qna = ProjectionLayer(768, 512).to(device)
 
-        """
-        'submission_order' 구조는 아래와 같음.
-                                                                        x_user_id  exercise_id  submission_order
-        0  40c258bc0488f4a4c10ba6ab7f249eff8992fd24317c45d81df1672685ced824      1548385                 1
-        1  40c258bc0488f4a4c10ba6ab7f249eff8992fd24317c45d81df1672685ced824      1548385                 2
-        2  40c258bc0488f4a4c10ba6ab7f249eff8992fd24317c45d81df1672685ced824      1548385                 3
-        3  40c258bc0488f4a4c10ba6ab7f249eff8992fd24317c45d81df1672685ced824      1548385                 4
-        4  40c258bc0488f4a4c10ba6ab7f249eff8992fd24317c45d81df1672685ced824      1548385                 5
-        5  40c258bc0488f4a4c10ba6ab7f249eff8992fd24317c45d81df1672685ced824      1548385                 6
-        6  40c258bc0488f4a4c10ba6ab7f249eff8992fd24317c45d81df1672685ced824      1548385                 7
-        7  40c258bc0488f4a4c10ba6ab7f249eff8992fd24317c45d81df1672685ced824      1548415                 1
-        8  40c258bc0488f4a4c10ba6ab7f249eff8992fd24317c45d81df1672685ced824      1548415                 2
-        9  40c258bc0488f4a4c10ba6ab7f249eff8992fd24317c45d81df1672685ced824      1548415                 3
-        -> 사용자는 1548385문제를 7번 제출했고, 그 다음 문제를 3+번 제출함.
-        """
-        self.code_df['submission_order'] = self.code_df.groupby(['x_user_id', 'exercise_id']).cumcount() + 1 # +1은 1번부터 시작하도록 하려고
-        # if self.debug:
-        #     print(self.code_df[['x_user_id', 'exercise_id', 'submission_order']].head(10).to_string(index=True))
+        # The structure of 'submission_order' is as follows:
+        #        x_user_id                               exercise_id  submission_order
+        # 0      40c258bc0488f4a4c10ba6ab7f249eff8992fd24317c45d81df1672685ced824      1548385                 1
+        # 1      40c258bc0488f4a4c10ba6ab7f249eff8992fd24317c45d81df1672685ced824      1548385                 2
+        # 2      40c258bc0488f4a4c10ba6ab7f249eff8992fd24317c45d81df1672685ced824      1548385                 3
+        # 3      40c258bc0488f4a4c10ba6ab7f249eff8992fd24317c45d81df1672685ced824      1548385                 4
+        # 4      40c258bc0488f4a4c10ba6ab7f249eff8992fd24317c45d81df1672685ced824      1548385                 5
+        # 5      40c258bc0488f4a4c10ba6ab7f249eff8992fd24317c45d81df1672685ced824      1548385                 6
+        # 6      40c258bc0488f4a4c10ba6ab7f249eff8992fd24317c45d81df1672685ced824      1548385                 7
+        # 7      40c258bc0488f4a4c10ba6ab7f249eff8992fd24317c45d81df1672685ced824      1548415                 1
+        # 8      40c258bc0488f4a4c10ba6ab7f249eff8992fd24317c45d81df1672685ced824      1548415                 2
+        # 9      40c258bc0488f4a4c10ba6ab7f249eff8992fd24317c45d81df1672685ced824      1548415                 3
+        
+        # In this example:
+        # The user submitted problem 1548385 a total of 7 times, followed by submitting problem 1548415 at least 3 times.
+
+        self.code_df['submission_order'] = self.code_df.groupby(['x_user_id', 'exercise_id']).cumcount() + 1 
+
+
+        # Stores the ID of the previously processed user.
+        # This is used to reset the cumulative embedding whenever the user ID changes.
+        self.previous_user_id = None 
+
+
+        # Stores the cumulative embeddings of the current user's learning progress.
+        # It accumulates information from the user's previous problem-solving history and the current problem.
+        # This allows the model to track the user's learning progress in chronological order.
+        # If the current user is the same as the user from the previous batch, `self.cumulative_embeddings` continues from the previous batch.
+        self.cumulative_embeddings = [] 
         
 
-        self.previous_user_id = None #이전에 처리한 사용자의 ID를 저장함. 사용자가 변경될 때마다 누적 임베딩을 초기화하는 데 활용.
 
-        self.cumulative_embeddings = [] 
-        #현재 사용자의 누적된 학습 과정의 임베딩을 저장. 사용자의 이전 문제 해결 기록과 현재 문제의 정보를 누적하여 저장하는 용도.
-        #이를 통해 사용자의 학습 진행 상황을 시간 순서대로 추적할 수 있음. 
-        #따라서 앞 배치와 사용자가 동일하다면 self.cumulative 는 앞 배치것에 이어서 작성됨.
-
-        self.previous_problem_id = None #이전에 처리한 문제의 ID를 저장. 문제가 변경될 때마다 필요한 처리(예: 새로운 문제 설명 임베딩 추가)를 수행하는 데 활용.
+        # Stores the ID of the previously processed problem.
+        # Used to perform necessary actions (e.g., adding a new problem description embedding) whenever the problem ID changes.
+        self.previous_problem_id = None 
         self.first_call = True
-        """
-        self.user_problem_map의 구성 
-        {
-            '사용자ID1': {
-                문제ID1: [제출인덱스1, 제출인덱스2, ...],
-                문제ID2: [제출인덱스1, 제출인덱스2, ...],
-                ...
-            },
-            '사용자ID2': {
-                문제ID1: [제출인덱스1, 제출인덱스2, ...],
-                문제ID2: [제출인덱스1, 제출인덱스2, ...],
-                ...
-            },
-            ...
-        }
 
-        """
+        # Structure of self.user_problem_map:
+        # {
+        #     'UserID1': {
+        #         ProblemID1: [SubmissionIndex1, SubmissionIndex2, ...],
+        #         ProblemID2: [SubmissionIndex1, SubmissionIndex2, ...],
+        #         ...
+        #     },
+        #     'UserID2': {
+        #         ProblemID1: [SubmissionIndex1, SubmissionIndex2, ...],
+        #         ProblemID2: [SubmissionIndex1, SubmissionIndex2, ...],
+        #         ...
+        #     },
+        #     ...
+        # }
+        
+        # This dictionary maps each user ID to their associated problem IDs, which in turn map to a list of submission indices.
+        # It is used to track and organize submission data for each user and problem combination.
         self.user_problem_map = self._create_user_problem_map()
 
         if self.debug:
@@ -238,7 +244,7 @@ class SkillDataset(Dataset):
 
     def resize_token_embeddings(self):
         """
-        Special tokens [SKILL], [TARGET] 등을 토크나이저에 추가.
+        Add special tokens like [SKILL], [TARGET]. 
         """
         special_tokens_dict = {'additional_special_tokens': ['[SKILL]', '[TARGET SKILL]', '[QUESTION]', '[TARGET]', '[CODE]', '[TEXT]']}
         self.text_tokenizer.add_special_tokens(special_tokens_dict)
@@ -251,8 +257,8 @@ class SkillDataset(Dataset):
 
 
     def __len__(self):
-        #각 학생이 푼 모든 문제에 대해 마지막 제출을 제외한 제출 내역의 수를 합산
-        #마지막 제출은 학습에 사용하지 않고 테스트 또는 평가에 사용하려는 목적
+        # Calculates the total number of submissions for all problems solved by each student, excluding the final submission for each problem.
+        # The final submission is excluded as it is intended to be used for testing or evaluation purposes rather than training.
         length = sum(len(problems) - 1 for problems in self.user_problem_map.values())
         return length
 
@@ -260,54 +266,37 @@ class SkillDataset(Dataset):
     def __getitem__(self, idx):
             """
             Args:
-                idx (int): 데이터셋에서 가져올 항목의 인덱스
-
-            Returns:
-                tuple: 다음 요소를 포함하는 튜플:
-                    - cumulative_embeddings (torch.Tensor): 누적된 임베딩 텐서 (학생 교육 history). Shape:[N, 512] (N은 누적된 길이)
-                    - target (int): 주어진 사용자와 문제에 대한 타겟 값. Shape: scalar
-                    - anchor_embeddings (torch.Tensor): 현재 문제에 대한 앵커 임베딩. Shape: [M, 512] (M은 현재 문제에 대한 제출 횟수)
-                    - positive_emb (torch.Tensor): 긍정 샘플에 대한 임베딩. Shape: [M, 512]
-                    - negative_emb (torch.Tensor): 부정 샘플에 대한 임베딩. Shape: [1, 512]
-                    - positive_qna_emb (torch.Tensor): 긍정 질문-응답 샘플에 대한 임베딩. Shape: [1, 512]
-                    - negative_qna_emb (torch.Tensor): 부정 질문-응답 샘플에 대한 임베딩. Shape: [1, 512]
-                    - codet5_input_ids (torch.Tensor): Codet5 모델에 대한 입력 ID. Shape: [P, 512] (P는 질문-응답 쌍의 수)
-                    - codet5_attention_mask (torch.Tensor): Codet5 모델에 대한 어텐션 마스크. Shape: [P, 512]
-                    - codet5_targets (torch.Tensor): Codet5 모델에 대한 타겟 ID. Shape: [P, 512]
-                    - original_data (dict): 원본 데이터에 대한 정보가 담긴 딕셔너리 
-            """
-            #one batch : 하나의 학생이 하나의 문제를 푼 정보로 구성
-            user_idx, problem_idx = self._get_indices(idx)
+                idx (int): Index from the dataset.
             
+            Returns:
+                tuple: A tuple containing the following elements:
+                    - cumulative_embeddings (torch.Tensor): Tensor of cumulative embeddings (student learning history). Shape: [N, 512] (N is the cumulative length).
+                    - target (int): Target value for the given user and problem. Shape: scalar.
+                    - anchor_embeddings (torch.Tensor): Anchor embeddings for the current problem. Shape: [M, 512] (M is the number of submissions for the current problem).
+                    - positive_emb (torch.Tensor): Embeddings for positive samples. Shape: [M, 512].
+                    - negative_emb (torch.Tensor): Embeddings for negative samples. Shape: [1, 512].
+                    - positive_qna_emb (torch.Tensor): Embeddings for positive question-answer samples. Shape: [1, 512].
+                    - negative_qna_emb (torch.Tensor): Embeddings for negative question-answer samples. Shape: [1, 512].
+                    - codet5_input_ids (torch.Tensor): Input IDs for the Codet5 model. Shape: [P, 512] (P is the number of question-answer pairs).
+                    - codet5_attention_mask (torch.Tensor): Attention mask for the Codet5 model. Shape: [P, 512].
+                    - codet5_targets (torch.Tensor): Target IDs for the Codet5 model. Shape: [P, 512].
+                    - original_data (dict): Dictionary containing information about the original data.
             """
-            'da13b1835a64ace869a29a0ebc54f43befe8a64961d37798cb4f99ec1b183a6b': defaultdict(<class 'list'>, 
-            {
-                1551714: [7567, 7568, 7569, 7570, 7571, 7572], 
-                1554364: [7573, 7574]
-            })
-            (user_idx, problem_idx)가 (0, 0) 이라면 
-                user_id = 'da13b1835a64ace869a29a0ebc54f43befe8a64961d37798cb4f99ec1b183a6b'
-                problem_list = [1551714, 1554364]
-                problem_id = 1551714 
 
-            (user_idx, problem_idx)가 (0, 1) 인 경우,
-                user_id = 'da13b1835a64ace869a29a0ebc54f43befe8a64961d37798cb4f99ec1b183a6b'
-                problem_list = [1551714, 1554364]
-                problem_id = 1554364
-            """
             user_id = list(self.user_problem_map.keys())[user_idx]
             problem_list = list(self.user_problem_map[user_id].keys())
             problem_id = problem_list[problem_idx]
 
 
-            #새로운 사용자를 감지하고 누적 임베딩을 초기화하는 역할
+            # Detects a new user and resets the cumulative embeddings accordingly.
             if self.previous_user_id != user_id:
                 self.cumulative_embeddings = []
                 if self.debug:
                     logging.info("\n\nNew user detected. Resetting cumulative embeddings.")
 
-            # 사용자가 바뀌거나 같은 사용자의 다른 문제로 넘어갈 때 실행
-            # 새로운 문제에 대한 텍스트 임베딩을 생성 후 cumulative_embeddings에 append
+        
+            # Executes when the user changes or when transitioning to a different problem for the same user.
+            # Generates a text embedding for the new problem and appends it to cumulative_embeddings.
             if self.previous_user_id != user_id or self.previous_problem_id != problem_id:
                 text_embedding = self._embed_text(problem_id, next = False)
                 self.cumulative_embeddings.append(text_embedding)
@@ -316,23 +305,23 @@ class SkillDataset(Dataset):
 
                 
 
-            #학생의 현재 문제에 대한 제출 index 구함
+            # Retrieves the submission indices for the student's current problem.
             submission_indices = self.user_problem_map[user_id][problem_id] #ex. [20, 21]
 
             if self.debug:
                 logging.info(f"\n\nuser_id: {user_id}, problem_id: {problem_id}")
                 logging.info(f"submission_indices: {submission_indices}")
                 
-            code_embeddings = [] #code submissions 저장
-            question_embeddings = [] #question이 있다면 저장 없으면 (1, 512)
-            current_problem_embeddings = [] #나중에 anchor가 됨
-            codet5_input_ids_list = [] #codet5 fine-tuning을 위한 학생 질문 토큰 저장
-            codet5_attention_mask_list = []
-            codet5_targets_list = [] #codet5 fine-tuning을 위한 교사 응답 토큰 저장
+            code_embeddings = []  # Stores the embeddings of code submissions.
+            question_embeddings = []  # Stores the embeddings of questions if available; otherwise, a tensor of shape (1, 512).
+            current_problem_embeddings = []  # Stores embeddings for the current problem, which later serve as the anchor.
+            codet5_input_ids_list = []  # Stores student question tokens for Codet5 fine-tuning.
+            codet5_attention_mask_list = []  # Stores attention masks for Codet5 fine-tuning.
+            codet5_targets_list = []  # Stores teacher response tokens for Codet5 fine-tuning.
 
-            flag = True #학생 질문이 없을 경우 사용하는 flag
+            flag = True 
 
-            #현재 사용자가 한 문제에 대해 푼 모든 submission에 대해 반복
+            # Iterates over all submissions made by the current user for a single problem.
             for i, submission_idx in enumerate(submission_indices):
                 if isinstance(submission_idx, int):
                     row = self.code_df.iloc[submission_idx]
@@ -341,28 +330,29 @@ class SkillDataset(Dataset):
 
                 code_embedding = self._embed_code(row['contents']) #[1, 512]
                 code_embeddings.append(code_embedding) 
-                #이 리스트는 한 학생이 해당 문제에 대해 여러 번 제출한 모든 코드 임베딩을 담게 됨. 따라서 for 문을 다 돌면 제출 횟수만큼 길어짐. 
+                
+                # This list stores all code embeddings for multiple submissions made by a single student for the given problem. 
+                # By the end of the loop, its length corresponds to the number of submissions.
                 current_problem_embeddings.append(code_embedding) 
 
                 current_submission_time = row['created_datetime']
                 
-                if i > 0:  # 첫 번째 제출이 아닌 경우
+                if i > 0:  # If not first submission
                     prev_submission_idx = submission_indices[i-1]
                     if isinstance(prev_submission_idx, int):
                         prev_submission_time = self.code_df.iloc[prev_submission_idx]['created_datetime']
                     else:
                         prev_submission_time = self.code_df.iloc[prev_submission_idx[1]]['created_datetime']
-                else:  # 첫 번째 제출인 경우
+                else:  # if first submission
                     prev_submission_time = pd.Timestamp.min
                 
 
-                # 시간 형식 맞추기
                 if current_submission_time.tzinfo is None:
                     current_submission_time = current_submission_time.tz_localize('UTC')
                 if prev_submission_time.tzinfo is None:
                     prev_submission_time = prev_submission_time.tz_localize('UTC')
 
-                #현재 제출을 하기 전에 했던 질문 내역을 확인
+                # Checks the history of questions asked prior to the current submission.
                 help_center_questions = self.help_center_log[
                     (self.help_center_log['x_user_id'] == user_id) &
                     (self.help_center_log['exercise_id'] == problem_id) &
@@ -372,7 +362,7 @@ class SkillDataset(Dataset):
                 
                 
                 if not help_center_questions.empty:
-                    #질문이 있는 경우
+                    # if there is questions
                     if self.debug:
                         logging.info(f"\n\n============================================================")
                         logging.info(f"There is questions.")
@@ -392,12 +382,13 @@ class SkillDataset(Dataset):
                     self.previous_codet5_targets = codet5_targets
                 else:
                     flag = False
-                    #질문을 하지 않은 경우
+                   
+                    # if no questions asked
                     question_embeddings.append(torch.zeros(1, 512).to(self.device))
                     
-                    # Random fallback 질문을 가져오는 로직 추가
-                    # 질문이 없는 상황에서도 codet5는 계속 학습되어야 하기 때문에 랜덤한 질문과 그 질문에 대한 답변을 가져옴
-                    # 학생의 submission 횟수만큼 반복하기 때문에 랜덤한 경우라면, 즉 submission과 무관한 경우라면 그것들 중에서 하나만 모델에게 보냄.
+                    # Adds logic to fetch random fallback questions.
+                    # This ensures Codet5 continues training even in the absence of student questions by providing a random question-answer pair.
+                    # Since the loop iterates over the student's submission count, in cases where the question is unrelated to submissions, only one question is sent to the model.
                     random_question, random_answer = self._fetch_random_question()
                     skills = self._embed_skills(random_question)
                     if self.debug:
@@ -409,23 +400,23 @@ class SkillDataset(Dataset):
             
             code_embeddings = torch.cat(code_embeddings, dim=0) #[# of code submission, 512]
             question_embeddings = torch.cat(question_embeddings, dim=0) #[# of questions , 512] or [# of code submission, 512] if no question asked
-            # skill 개수도 고려해서 디멘젼
             anchor_embeddings = torch.cat(current_problem_embeddings, dim=0) #[#of code submission, 512]
 
-            #codet5는 배치 안에 있는 각각의 질문을 독립적으로 인코딩->따라서 위아래로 쌓는 구조 가능
+        
             pad_tensor = torch.full((1, 512), self.question_tokenizer.pad_token_id, dtype=torch.long).to(self.device)
             if flag == True:
-                # 질문이 있는 경우, codet5를 학습하는 질문-응답 쌍도 해당 code submission과 관련이 있으므로 전부 다 사용
+                # If questions are present, all question-answer pairs related to the code submission are used for Codet5 training.
                 codet5_input_ids = torch.cat(codet5_input_ids_list, dim=0) if codet5_input_ids_list else pad_tensor #[#of questions, 512] or [1, 512]
                 codet5_attention_mask = torch.cat(codet5_attention_mask_list, dim=0) if codet5_attention_mask_list else pad_tensor
                 codet5_targets = torch.cat(codet5_targets_list, dim=0) if codet5_targets_list else pad_tensor
             else:
-                # 질문이 없는 경우, codet5를 학습하는 질문-응답 쌍은 해당 code submission과 관련이 없으므로 맨 앞의 것만 활용 
+                # If no questions are present, the question-answer pair used for Codet5 training is unrelated to the code submission.
+                # In this case, only the first question-answer pair is utilized.
                 codet5_input_ids = codet5_input_ids_list[0] if codet5_input_ids_list else pad_tensor #[#of questions, 512] or [1, 512]
                 codet5_attention_mask = codet5_attention_mask_list[0] if codet5_attention_mask_list else pad_tensor
                 codet5_targets = codet5_targets_list[0] if codet5_targets_list else pad_tensor
                 # print("random shape: ", codet5_input_ids.shape)
-                # 따라서 항상 [1, 512] shape
+                # always [1, 512] 
 
             
             self.cumulative_embeddings.append(code_embeddings)
@@ -440,7 +431,6 @@ class SkillDataset(Dataset):
             cumulative_embeddings = torch.cat(self.cumulative_embeddings, dim=0)
             # print("cumulative_embeddings: ", cumulative_embeddings.shape)
 
-            # cumulative embeddings에 들어가야 하는 모든 데이터가 다 들어갔으므로, 업데이트 
             self.previous_user_id = user_id
             self.previous_problem_id = problem_id
             
@@ -477,8 +467,6 @@ class SkillDataset(Dataset):
                 logging.info(f"what is the decoded question?: {decoded}")
                 codet5_input_ids = codet5_input_ids.long()
                 codet5_targets = codet5_targets.long()
-
-                # codet5 loss 계산
                 codet5_loss = self.question_model(input_ids=codet5_input_ids, attention_mask=codet5_attention_mask, labels=codet5_targets).loss
                 print(f"codet5_loss shape: {codet5_loss.shape}")
                 logging.info(f"codet5_loss shape: {codet5_loss.shape}")
@@ -515,7 +503,7 @@ class SkillDataset(Dataset):
         1. _get_indices(0):
 
         count = 0, user_idx = 0, problem_idx = 0 (user1의 1001)
-        count == idx (0 == 0), 따라서 (0, 0) 반환
+        count == idx (0 == 0)
 
 
         2. _get_indices(2):
@@ -523,51 +511,43 @@ class SkillDataset(Dataset):
         count = 0, user_idx = 0, problem_idx = 0 (user1의 1001)
         count = 1, user_idx = 0, problem_idx = 1 (user1의 1002)
         count = 2, user_idx = 0, problem_idx = 2 (user1의 1003)
-        count == idx (2 == 2), 따라서 (0, 2) 반환
+        count == idx (2 == 2)
 
 
         3. _get_indices(3):
 
-        user1의 모든 문제 처리 (count = 0, 1, 2)
-        count = 3, user_idx = 1, problem_idx = 0 (user2의 2001)
-        count == idx (3 == 3), 따라서 (1, 0) 반환
+        user1's all learning history (count = 0, 1, 2)
+        count = 3, user_idx = 1, problem_idx = 0 (user2's 2001)
+        count == idx (3 == 3)
 
 
         4. _get_indices(5):
 
-        user1의 모든 문제 처리 (count = 0, 1, 2)
-        user2의 모든 문제 처리 (count = 3, 4)
-        count = 5, user_idx = 2, problem_idx = 0 (user3의 3001)
-        count == idx (5 == 5), 따라서 (2, 0) 반환
+        user1's all learning history (count = 0, 1, 2)
+        user2's all learning history (count = 3, 4)
+        count = 5, user_idx = 2, problem_idx = 0 (user3's 3001)
+        count == idx (5 == 5)
 
 
         5. _get_indices(8):
 
-        user1의 모든 문제 처리 (count = 0, 1, 2)
-        user2의 모든 문제 처리 (count = 3, 4)
-        user3의 모든 문제 처리 (count = 5, 6, 7, 8)
-        count == idx (8 == 8), 따라서 (2, 3) 반환
-
-
-        6. _get_indices(9):
-
-        모든 사용자와 문제를 순회
-        마지막 count는 8
-        IndexError("Index 9 out of range") 발생
+        user1's all learning history (count = 0, 1, 2)
+        user2's all learning history (count = 3, 4)
+        user3's all learning history (count = 5, 6, 7, 8)
+        count == idx (8 == 8)
         """
         
         count = 0
         users_list = list(self.user_problem_map.keys()) 
         
         for i, (user_id, problems) in enumerate(self.user_problem_map.items()):
-            start_count = count  # 현재 유저의 시작 인덱스
+            start_count = count  # Starting index for the current user.
 
             for problem_idx, problem_id in enumerate(problems.keys()):
                 if count == idx:
-                    if hasattr(self, 'first_call') and self.first_call:  # 첫 호출일 때만 체크
-                        self.first_call = False  # 플래그 해제
-                        if start_count != idx:  # 중간 문제라면
-                            # 다음 유저의 첫 번째 문제 찾기
+                    if hasattr(self, 'first_call') and self.first_call: 
+                        self.first_call = False  
+                        if start_count != idx: 
                             for next_i in range(i + 1, len(users_list)):
                                 next_user = users_list[next_i]
                                 if self.user_problem_map[next_user]:
@@ -579,7 +559,7 @@ class SkillDataset(Dataset):
 
 
     def _get_next_problem_id(self, user_id, current_problem_idx):
-        #특정 학생(user_id)이 현재 푸는 문제(current_problem_idx) 다음 문제의 ID를 반환하는 함수
+        # Function that returns the ID of the next problem for a specific student (user_id) after the current problem (current_problem_idx).
         problem_list = list(self.user_problem_map[user_id].keys())
         if current_problem_idx < len(problem_list) - 1:
             return problem_list[current_problem_idx + 1]
@@ -587,14 +567,15 @@ class SkillDataset(Dataset):
 
     def _embed_code(self, content):
         """
-        학생의 코드 제출 contents를 임베딩하는 함수
-
-        Args:
-            content (str): 임베딩할 코드 내용이 포함된 문자열
-
-        Returns:
-            torch.Tensor: 주어진 코드 내용에 대한 임베딩 벡터. Shape: [1, 512]
+            Function to embed the contents of a student's code submission.
+        
+            Args:
+                content (str): A string containing the code content to be embedded.
+        
+            Returns:
+                torch.Tensor: An embedding vector for the given code content. Shape: [1, 512]
         """
+
         token_types = '[CODE]'
         content = token_types + ' ' + str(content)
         code_tokens = self.code_tokenizer.tokenize(content)
@@ -604,10 +585,10 @@ class SkillDataset(Dataset):
         max_length = 256
         if len(tokens_ids) > max_length:
             tokens_ids = tokens_ids[:max_length]
-        else: #0이 무슨 토큰인지 
+        else: 
             tokens_ids = tokens_ids + [0] * (max_length - len(tokens_ids))
 
-        with torch.no_grad(): # None 체크
+        with torch.no_grad():
             embedding = self.code_model(torch.tensor(tokens_ids)[None, :].to(self.device)).last_hidden_state.max(dim=1).values
 
         return self.projection_code(embedding)
@@ -616,16 +597,16 @@ class SkillDataset(Dataset):
 
     def _embed_text(self, ex_id, next = True):
         """
-        주어진 문제 ID에 대한 description을 임베딩하는 함수
-
-        Args:
-            ex_id (int): 임베딩할 문제의 ID.
-            next (bool): 다음 문제 정보를 사용할지 여부. True이면 '[TARGET]' 토큰 타입을 사용하고, False이면 '[TEXT]' 토큰 타입을 사용.
-
-        Returns:
-            torch.Tensor: 주어진 문제 내용에 대한 임베딩 벡터. Shape: [1, 512]
+            Function to embed the description of a given problem ID.
+    
+            Args:
+                ex_id (int): The ID of the problem to embed.
+                next (bool): Determines whether to use information about the next problem. 
+                             If True, uses the '[TARGET]' token type; if False, uses the '[TEXT]' token type.
+    
+            Returns:
+                torch.Tensor: An embedding vector for the given problem description. Shape: [1, 512]
         """
-        # next == True이면 다음 문제 정보 (토큰 타입 분리를 위함)
         if next:
             max_length = 512
             token_type = '[TARGET]'
@@ -657,22 +638,30 @@ class SkillDataset(Dataset):
             return self.projection_text(embeddings)
         
     def _embed_questions_with_codet5(self, help_center_questions):
+       """
+            Args:
+                help_center_questions: A list of questions asked before submitting the current submission.
+    
+            Returns:
+                If the question-answer pairs are consistent:
+                    - question_embeddings (torch.Tensor): Embeddings of the questions. Shape: [number of questions, 512].
+                    - codet5_input_ids (torch.Tensor): Input IDs for Codet5. Shape: [number of questions, 512].
+                    - codet5_attention_masks (torch.Tensor): Attention masks for Codet5. Shape: [number of questions, 512].
+                    - codet5_targets (torch.Tensor): Target tokens for Codet5. Shape: [number of questions, 512].
+    
+                Otherwise:
+                    - question_embeddings (torch.Tensor): Embeddings of the questions. Shape: [number of questions, 512].
+                    - codet5_input_ids (torch.Tensor): Input IDs for Codet5. Shape: [1, 512].
+                    - codet5_attention_masks (torch.Tensor): Attention masks for Codet5. Shape: [1, 512].
+                    - codet5_targets (torch.Tensor): Target tokens for Codet5. Shape: [1, 512].
         """
-        Args: help_center_questions (해당 제출물을 제출하기 전에 했던 질문 내역들)
 
-        Returns: 
-            if 질문-대답 쌍이 일정할 경우:
-                질문 임베딩([질문 개수, 512]), codet5_input_ids([질문 개수, 512]), codet5_attention_masks([질문 개수, 512]) , codet5_targets([질문 개수, 512]) 
-            else:
-                질문 임베딩([질문 개수, 512]), codet5_input_ids([1, 512]), codet5_attention_masks([1, 512]) , codet5_targets(1, 512]) 
-        """
-        question_embeddings = [] #질문 임베딩 담는 리스트
-        codet5_input_ids_list = [] #codet5 auxiliary task를 위한 질문 토큰
-        codet5_attention_mask_list = [] #codet5 auxiliary task를 위한 질문 attention mask
-        codet5_targets_list = [] #codet5 auxiliary task를 위한 응답 토큰
+        question_embeddings = []  # List to store question embeddings.
+        codet5_input_ids_list = []  # List to store question tokens for the Codet5 auxiliary task.
+        codet5_attention_mask_list = []  # List to store attention masks for questions in the Codet5 auxiliary task.
+        codet5_targets_list = []  # List to store response tokens for the Codet5 auxiliary task.
 
         for _, question in help_center_questions.iterrows():
-            # 학생의 질문인 경우
             if question['is_student'] == True:
                 question_text = f"question: {question['content']}"
                 if self.debug:
@@ -684,24 +673,20 @@ class SkillDataset(Dataset):
                 with torch.no_grad():
                     embedding = self.question_model.encoder(input_ids=inputs, attention_mask=attention_mask).last_hidden_state.mean(dim=1)
                     # embedding: [1, 512]
-                    question_embeddings.append(embedding) #질문 임베딩
+                    question_embeddings.append(embedding)
                 
-                codet5_input_ids_list.append(inputs) #토큰화된 질문 for fine-tuning
-                codet5_attention_mask_list.append(attention_mask) #attention mask
-            # 튜터의 답변인 경우
+                codet5_input_ids_list.append(inputs)
+                codet5_attention_mask_list.append(attention_mask)
             else:
                 target_text = question['content']  # assuming the ground truth is stored in 'content'
                 targets = self.question_tokenizer(target_text, return_tensors="pt", padding="max_length", truncation=True, max_length=512).input_ids.to(self.device)
                 codet5_targets_list.append(targets)
                 
-
-        # #학생의 질문이 없거나 교사의 응답이 없을 경우 -> codet5 fine tuning과 관련된 모든걸 초기화하고 랜덤 질문 추가
         if not codet5_input_ids_list or not codet5_targets_list:
             codet5_input_ids_list = []
             codet5_attention_mask_list = []
             codet5_targets_list = []
 
-            # Random fallback 질문을 가져오는 함수
             random_question, random_answer = self._fetch_random_question()
 
             random_question_text = f"question: {random_question}"
@@ -721,7 +706,6 @@ class SkillDataset(Dataset):
                 logging.info(f"question: {random_question_text}")
                 logging.info(f"answer: {random_answer_text}")
 
-        # 길이 맞추기
         max_length = max(len(codet5_input_ids_list), len(codet5_targets_list))
         for list_to_pad in [codet5_input_ids_list, codet5_attention_mask_list, codet5_targets_list]:
             while len(list_to_pad) < max_length:
@@ -729,7 +713,7 @@ class SkillDataset(Dataset):
 
 
         pad_tensor = torch.full((1, 512), self.question_tokenizer.pad_token_id, dtype=torch.long).to(self.device)
-        # 결과 처리
+
         if question_embeddings:
             question_embeddings = self.projection_qna(torch.cat(question_embeddings, dim=0)) #[# of questions, 512]
         else:
@@ -756,21 +740,21 @@ class SkillDataset(Dataset):
         """
         Fetch a random student question and its corresponding teacher answer from the dataset.
 
-        Returns: 랜덤으로 선택한 학생의 질문과 그에 대한 교사의 응답 (string)
+        Returns:
+            A randomly selected student question and its corresponding teacher answer as a string.
         """
-        #학생의 질문만 남도록 필터링
         student_questions = self.help_center_log[self.help_center_log['is_student'] == True]
 
         
         if not student_questions.empty:
-            random_index = random.randint(0, len(student_questions) - 1) #질문 랜덤 샘플링
+            random_index = random.randint(0, len(student_questions) - 1)
             random_question_row = student_questions.iloc[random_index]
             random_question = random_question_row['content'] 
-            exercise_id = random_question_row['exercise_id'] #해당 질문에 대한 응답 찾기 위해
-            post_time = random_question_row['post_created_datetime'] #해당 질문에 대한 응답 찾기 위해
+            exercise_id = random_question_row['exercise_id'] 
+            post_time = random_question_row['post_created_datetime'] 
 
 
-            # 관련된 교사 응답 패칭 (학생의 질문 다음에 오는 교사의 응답 중 첫번째 것을 가져오려고 함)
+            # Fetching the corresponding teacher response (intended to retrieve the first teacher response following the student's question).
             teacher_answers = self.help_center_log[
                 (self.help_center_log['exercise_id'] == exercise_id) &
                 (self.help_center_log['is_student'] == False) &
@@ -780,58 +764,57 @@ class SkillDataset(Dataset):
             if not teacher_answers.empty:
                 teacher_answer = teacher_answers.iloc[0]['content']
             else:
-                teacher_answer = "No corresponding teacher response found."  #없는 경우 
+                teacher_answer = "No corresponding teacher response found." 
 
 
             return random_question, teacher_answer
 
-        #학생의 질문이 없는 경우는 없지만 혹시 모르므로..
         return None, None
 
     def _embed_question(self, question_text):
         """
-        주어진 질문 텍스트를 codet5 모델을 통해 임베딩하는 함수.
+        Function to embed the given question text using the Codet5 model.
 
         Args:
-            question_text (str): 질문 내용이 포함된 문자열.
+            question_text (str): A string containing the content of the question.
 
         Returns:
-            torch.Tensor: codet5 모델을 통해 생성된 질문 임베딩. 
-
+            torch.Tensor: The question embedding generated by the Codet5 model.
         """
+
         max_length = 512
         question_text = f"question: {question_text}"
         
-        # 토큰화 및 입력 데이터 생성
         inputs = self.question_tokenizer(question_text, return_tensors="pt", padding="max_length", truncation=True, max_length=max_length).input_ids.to(self.device)
         attention_mask = self.question_tokenizer(question_text, return_tensors="pt", padding="max_length", truncation=True, max_length=max_length).attention_mask.to(self.device)
         
         with torch.no_grad():
-            # codet5 모델을 사용하여 임베딩 생성
             embedding = self.question_model.encoder(input_ids=inputs, attention_mask=attention_mask).last_hidden_state.mean(dim=1)
-            # if self.debug:
-            #     logging.info(f"what is the codet5 embedding shape?: {embedding.shape}")
         
         return self.projection_qna(embedding)
     
     def _embed_skills(self, questions):
         """
-        주어진 질문 데이터에서 스킬을 추출하고 (_process_skills 함수 활용) 임베딩 만듦.
+        Extracts skills from the given question data (using the _process_skills function) and creates embeddings.
 
         Args:
-            questions (str, pd.DataFrame, list): 질문 데이터는 다양한 형식으로 제공됨 (질문 데이터가 있는 경우 DataFrame, 없는 경우 string)
+            questions (str, pd.DataFrame, list): The question data, which can be provided in various formats 
+                                                 (DataFrame if questions exist, string if none).
 
         Returns:
-            추출된 스킬의 임베딩이 모두 포함된 텐서. 위아래로 연결됨.
-            스킬이 없을 경우 [1, 768] 크기의 0으로 채워진 텐서를 반환. 
-            나중에 projection layer를 통과하면서 [1, 512] 크기가 됨
-        
-        동작 과정:
-            1. 입력된 질문이 문자열인 경우, 리스트로 변환하여 일관되게 처리.
-            2. 질문이 판다스 DataFrame인 경우, 각 행의 'content'에서 스킬을 추출하고 임베딩 생성.
-            3. 질문이 리스트인 경우, 리스트의 각 항목에서 스킬을 추출하고 임베딩 생성.
-            4. 모든 스킬 임베딩을 텐서로 결합하여 반환. 만약 스킬 임베딩이 없으면 [1, 768] 크기의 0 텐서를 반환.
+            torch.Tensor: A tensor containing embeddings of all extracted skills, concatenated vertically.
+                          If no skills are extracted, returns a zero-filled tensor of size [1, 768].
+                          This will later pass through a projection layer to become size [1, 512].
+
+        Process:
+            1. If the input question is a string, it is converted into a list for consistent processing.
+            2. If the question is a pandas DataFrame, skills are extracted and embeddings are created 
+               for each 'content' row.
+            3. If the question is a list, skills are extracted and embeddings are created for each item.
+            4. All skill embeddings are concatenated into a tensor and returned. 
+               If no skill embeddings exist, a zero-filled tensor of size [1, 768] is returned.
         """
+
         skill_embeddings = []
 
         if isinstance(questions, str):
@@ -856,30 +839,31 @@ class SkillDataset(Dataset):
 
     def _process_skill(self, content):
         """
-        주어진 질문(str)에서 스킬을 추출하고 임베딩을 생성하는 보조 함수.
+        Helper function to extract skills from a given question (str) and create embeddings.
 
         Args:
-            content(str): skill을 추출해야 하는 문장
+            content (str): The sentence from which skills need to be extracted.
 
         Returns:
-            추출된 스킬을 임베딩한 텐서. 스킬이 없을 경우 기본 임베딩을 반환. Shape: [1, 512]
+            torch.Tensor: A tensor embedding the extracted skills. If no skills are extracted, returns a default embedding. Shape: [1, 512]
 
-        동작 과정:
-            1. 주어진 콘텐츠에서 코드 블락과 에러 메시지를 정규 표현식을 사용하여 추출.
-            2. 코드와 에러 메시지를 제거한 후 남은 텍스트를 기반으로 분석 유형을 결정.
-            3. 추출된 코드, 에러, 텍스트, 분석 유형을 기반으로 스킬을 추출 (_extract_skills 함수 사용)
-            4. 추출된 스킬을 공백으로 구분된 하나의 문자열로 결합한 후, 이를 임베딩 벡터로 변환.
+        Process:
+            1. Use regular expressions to extract code blocks and error messages from the given content.
+            2. Remove the code and error messages, then analyze the remaining text to determine the analysis type.
+            3. Extract skills based on the extracted code, errors, text, and analysis type (using the _extract_skills function).
+            4. Combine the extracted skills into a single space-separated string and convert it into an embedding vector.
         """
+
         
         text = content.strip()
-        # 에러 패턴과 코드 패턴
+        
         error_pattern = r'(\w+Error): (.+)'  # error pattern
         code_pattern = r'```(.*?)```'  # code block pattern
 
-        # 에러 메시지를 먼저 추출
+        
         errors = re.findall(error_pattern, content, re.DOTALL)
 
-        # 에러 메시지를 제거한 나머지 텍스트에서 코드 블록을 추출
+        
         remaining_content = re.sub(error_pattern, '', content, re.DOTALL)
         codes = re.findall(code_pattern, remaining_content, re.DOTALL)
 
@@ -899,14 +883,13 @@ class SkillDataset(Dataset):
         else:
             analysis = "Unknown"
 
-        #_extract_skills로 들어가기 위한 형식 맞추기
+        
         codes = self._parse_content_column(codes)
         errors = self._parse_content_column(errors)
         text = self._parse_content_column(text)
         analysis = self._parse_content_column(analysis)
 
-        #self._extract_skills()를 호출하여 스킬 추출
-        #skills (list)
+        
         skills = self._extract_skills(codes, errors, text, analysis)
 
         if self.debug:
@@ -915,22 +898,19 @@ class SkillDataset(Dataset):
         
         skill_text = ' '.join(skills)
 
-        #임베딩
+        
         embedding = self._embed_skill(skill_text)
 
-        return embedding #string 하나만 파라미터로 전달받았기 때문에 임베딩 하나만 리턴
+        return embedding
     
 
     def _parse_content_column(self, content):
         """
-        스킬 추출 등 후속 작업에 필요한 리스트 형식의 데이터를 준비하기 위한 함수
+        Function to prepare list-format data required for subsequent tasks such as skill extraction.
         """
         if isinstance(content, str):
             content = content.strip("[]").replace("'", "").split(", ")
         return content if isinstance(content, list) else [str(content)]
-    
-
-    
 
 
     def _add_skill(self, skills, skill):
@@ -939,27 +919,27 @@ class SkillDataset(Dataset):
 
     def _extract_skills(self, codes, errors, texts, analysis):
         """
-        모델의 skill extractor system을 담당하는 함수
+        Function responsible for the model's skill extractor system.
 
         Args:
-            codes (list): 코드 블록 목록 
-            errors (list): 에러 메시지 목록 
-            texts (list): 텍스트 목록
-            analysis (list): analysis type 목록
+            codes (list): List of code blocks.
+            errors (list): List of error messages.
+            texts (list): List of textual descriptions.
+            analysis (list): List of analysis types.
 
         Returns:
-            list: 추출된 스킬의 목록을 반환. 중복되는 스킬은 제거됨.
-        
-        동작 과정:
-            1. 코드 블록에서 다양한 패턴을 찾아 스킬을 추출
-            2. 에러 메시지에서 특정 오류 유형을 찾아 스킬을 추출
-            3. 텍스트에서 특정 키워드를 기반으로 스킬을 추출
-            4. 분석 유형을 기반으로 특정 스킬을 추가
-            5. 중복 스킬은 한 번만 추가되도록 처리 (add_skill 함수)
+            list: A list of extracted skills, with duplicates removed.
+
+        Process:
+            1. Extracts skills by identifying patterns within the code blocks.
+            2. Extracts skills by identifying specific error types in the error messages.
+            3. Extracts skills based on specific keywords found in the text descriptions.
+            4. Adds specific skills based on the analysis type.
+            5. Ensures each skill is added only once (using the add_skill function).
         """
+
         skills = []
 
-        # 코드 분석을 위한 패턴
         code_patterns = {
             'Value': r'\b\d+(\.\d+)?\b',
             'Variable Assign': r'\b\w+\s*=\s*.+',
@@ -985,8 +965,6 @@ class SkillDataset(Dataset):
             'random': r'\brandom\b',
         }
 
-
-        # 오류 메시지 분석을 위한 패턴
         error_patterns = {
             'SyntaxError': r'SyntaxError',
             'NameError': r'NameError',
@@ -1009,7 +987,6 @@ class SkillDataset(Dataset):
             'RuntimeError': r'RuntimeError',
         }
 
-        # 텍스트 분석을 위한 패턴
         text_patterns = {
             'Value': r'\b숫자\b|\b소수\b|\b정수\b|\b부동 소수\b',
             'Variable Assign': r'\b변수\b|\b할당\b|\b넣\b|\b넣을\b',
@@ -1037,7 +1014,6 @@ class SkillDataset(Dataset):
             'File Operations': r'\b파일\b',
         }
 
-        # 분석 텍스트 기반 스킬 패턴
         analysis_patterns = {
             "Explanation Skill": r'Explanation needed',
             "Debugging Skill": r'Bug fixing',
@@ -1048,7 +1024,6 @@ class SkillDataset(Dataset):
         }
 
 
-        # 코드를 통한 스킬 추출
         for contents in codes:
             contents = str(contents)
             for skill, pattern in code_patterns.items():
@@ -1056,21 +1031,20 @@ class SkillDataset(Dataset):
                     self._add_skill(skills, skill)
                 
 
-        # 오류를 통한 스킬 추출
         for contents in errors:
             contents = str(contents)
             for skill, pattern in error_patterns.items():
                 if re.search(pattern, contents):
                     self._add_skill(skills, skill)
 
-        # 텍스트를 통한 스킬 추출
+
         for text in texts:
             text = str(text)
             for skill, pattern in text_patterns.items():
                 if re.search(pattern, text):
                     self._add_skill(skills, skill)
 
-        # 분석 텍스트를 통한 스킬 추출
+
         for item in analysis:
             item = str(item)
             for skill, pattern in analysis_patterns.items():
@@ -1086,15 +1060,15 @@ class SkillDataset(Dataset):
 
     def _embed_skill(self, skill_text):
         """
-        주어진 스킬 텍스트를 임베딩하는 함수.
+        Function to embed the given skill text.
 
         Args:
-            skill_text (str): 스킬을 설명하는 텍스트 문자열.
+            skill_text (str): A string describing the skill.
 
         Returns:
-            스킬 텍스트에 대한 임베딩. Shape: [1, 512]
-
+            torch.Tensor: An embedding for the skill text. Shape: [1, 512]
         """
+
         max_length = 512
         token_type = '[SKILL]'
         text = f"{token_type} {skill_text}" if skill_text else token_type
@@ -1109,18 +1083,18 @@ class SkillDataset(Dataset):
     
     def _embed_next_skills(self, ex_id):
         """
-        주어진 ex_id의 다음 문제를 풀기 위해 필요한 스킬들을 임베딩하는 함수
+        Function to embed the skills required to solve the next problem for the given ex_id.
 
         Args:
-            ex_id (int): 특정 문제 id
+            ex_id (int): The ID of a specific problem.
 
         Returns:
-            추출된 스킬 텍스트에 대한 임베딩. Shape: [1, 512]
+            torch.Tensor: An embedding of the extracted skill text. Shape: [1, 512]
         """
+
         max_length = 512
         token_type = '[TARGET SKILL]'
         
-        # ex_id에 해당하는 행 로드
         row = self.text_df.loc[self.text_df['exercise_id'] == ex_id].iloc[0]
         
         instruction_content = row['Instruction Content']
@@ -1128,8 +1102,7 @@ class SkillDataset(Dataset):
         
         instruction_content = self._parse_content_column(instruction_content)
         solution_content = self._parse_content_column(solution_content)
-        
-        #instruction_content = 글, solution_content = 코드 포함
+
         skills = self._extract_skills(solution_content, [], instruction_content, [])
         
         if self.debug:
@@ -1152,59 +1125,10 @@ class SkillDataset(Dataset):
 
     
     def _create_user_problem_map(self):
-        """
-        {
-            '사용자ID1': {
-                문제ID1: [제출인덱스1, 제출인덱스2, ...],
-                문제ID2: [제출인덱스1, 제출인덱스2, ...],
-                ...
-            },
-            '사용자ID2': {
-                문제ID1: [제출인덱스1, 제출인덱스2, ...],
-                문제ID2: [제출인덱스1, 제출인덱스2, ...],
-                ...
-            },
-            ...
-        }
+    
+        # Stores the indices of submitted codes (actual indices from code_df) for each problem (exercise_id) solved by each student (x_user_id).
+        # This allows for managing each student's problem-solving history and provides quick access to their submission records when needed.
 
-        실제 데이터
-        {
-            'da13b1835a64ace869a29a0ebc54f43befe8a64961d37798cb4f99ec1b183a6b': defaultdict(<class 'list'>, 
-            {
-                1551714: [7567, 7568, 7569, 7570, 7571, 7572], 
-                1554364: [7573, 7574]
-            })
-            ...
-
-            '431553096cc8235df17bf3edd61d57dfab41ed6d9c6b6025180f303124186d0b': defaultdict(<class 'list'>, 
-            {
-                1548385: [8378, 8379, 8380], 
-                1548415: [8381], 
-                1548498: [8382, 8383, 8384], 
-                1548709: [8385, 8386, 8387, 8388], 
-                1548907: [8389, 8390, 8391, 8392, 8393, 8394, 8395], 
-                1549215: [8396, 8397, 8398, 8399, 8400, 8401, 8402, 8403, 8404, 8405, 8406, 8407, 8408, 8409, 8410, 8411, 8412, 8413, 8414], 
-                1549445: [8415, 8416], 
-                1549659: [8417, 8418, 8419, 8420, 8421, 8422, 8423, 8424, 8425, 8426, 8427, 8428, 8429, 8430, 8431, 8432, 8433, 8434, 8435, 8436], 
-                1549839: [8437, 8438, 8439, 8440, 8441, 8442, 8443, 8444, 8445, 8446, 8447, 8448, 8449], 
-                1549976: [8450, 8451, 8452, 8453, 8454], 1550130: [8455, 8456, 8457, 8458, 8459], 
-                1550975: [8460, 8461, 8462, 8463], 
-                1551307: [8464, 8465], 
-                1551465: [8466, 8467, 8468, 8469, 8470], 
-                1551598: [8471, 8472, 8473, 8474, 8475, 8476], 
-                1551714: [8477, 8478, 8479, 8480, 8481, 8482, 8483, 8484, 8485, 8486, 8487, 8488, 8489, 8490, 8491, 8492, 8493], 
-                1551839: [8494], 
-                1551953: [8495, 8496], 
-                1552026: [8497, 8498, 8499, 8500, 8501, 8502], 
-                1552935: [8503, 8504], 
-                1553025: [8505, 8506]
-            })
-            ...
-        }
-        """
-
-        #각 학생(x_user_id)이 푼 문제(exercise_id)별로 제출된 코드의 인덱스들을(실제 code_df의 인덱스) 저장하는 역할
-        #이를 통해 각 학생의 문제 풀이 이력을 관리할 수 있으며, 나중에 각 학생의 제출 내역에 접근하여 필요한 정보를 빠르게 가져올 수 있음
         user_problem_map = defaultdict(lambda: defaultdict(list))
         for idx, row in self.code_df.iterrows():
             user_problem_map[row['x_user_id']][row['exercise_id']].append(idx)
@@ -1217,34 +1141,36 @@ class SkillDataset(Dataset):
 
     def _get_positive_sample(self, user_id, problem_id, current_idx):
         """
-        주어진 사용자가 특정 문제에 대해 제출한 다른 제출물을 가져오는 함수
-        같은 사용자의 같은 문제에 대해 현재 제출물 (current_idx)과 다른 제출물 중 하나를 선택
+        Function to retrieve another submission made by a given user for a specific problem.
+        Selects one submission different from the current submission (current_idx) for the same user and problem.
 
         Args:
-            user_id (str): 사용자 
-            problem_id (int): 현재 문제 id
-            current_idx (int): 현재 제출물의 인덱스
+            user_id (str): The user ID.
+            problem_id (int): The current problem ID.
+            current_idx (int): The index of the current submission.
 
         Returns:
-            int: positive 샘플로 선택된 제출물의 인덱스
+            int: The index of the submission selected as the positive sample.
         """
+
         possible_positives = [i for i in self.user_problem_map[user_id][problem_id] if i != current_idx]
         positive_idx = np.random.choice(possible_positives) if possible_positives else current_idx
         return positive_idx
 
     def _get_negative_sample(self, user_id, problem_id, current_idx):
         """
-        주어진 사용자가 특정 문제에 대해 제출한 것과 다른 문제나 아예 다른 사용자의 제출물을 가져오는 함수
-        사용자가 푼 다른 문제나 다른 사용자의 제출물 중 하나를 negative 샘플로 선택
+        Function to retrieve a submission either from a different problem solved by the given user 
+        or from a completely different user. Selects one submission as a negative sample.
 
         Args:
-            user_id (str): 사용자 
-            problem_id (int): 문제 id
-            current_idx (int): 현재 제출물의 인덱스
+            user_id (str): The user ID.
+            problem_id (int): The current problem ID.
+            current_idx (int): The index of the current submission.
 
         Returns:
-            int: negative 샘플로 선택된 제출물의 인덱스
+            int: The index of the submission selected as the negative sample.
         """
+    
         possible_negatives = []
         for prob_id in self.user_problem_map[user_id]:
             if prob_id != problem_id:
@@ -1285,12 +1211,12 @@ class SkillDataset(Dataset):
         return torch.zeros(1, 512).cpu()
 
     def _get_code_submissions(self, user_id, problem_id):
-        # user_id와 problem_id에 해당하는 코드 제출 내역을 반환
+        
         submissions = self.code_df[(self.code_df['x_user_id'] == user_id) & (self.code_df['exercise_id'] == problem_id)]
         return submissions['contents'].tolist()
 
     def _get_problem_text(self, problem_id):
-        # problem_id에 해당하는 문제 설명 텍스트 반환
+        
         problem = self.text_df[self.text_df['exercise_id'] == problem_id]
         return problem['Instruction Content'].iloc[0] if not problem.empty else ""
 
@@ -1343,7 +1269,7 @@ def load_targets(target_file_path):
             ('user2', 1001): 1
         }
 
-        리턴 형식
+        return example:
 
         ('de832cc1dc9bfecd21edbead3cfd08f97cc418e0b2cf7abddf7a06672e86737a', 1549839.0): 1.0, 
         ('de832cc1dc9bfecd21edbead3cfd08f97cc418e0b2cf7abddf7a06672e86737a', 1549976.0): 1.0, 
@@ -1371,20 +1297,6 @@ def load_targets(target_file_path):
 
 
 def load_and_sample_dataset(config, question_model, device, cross):
-    """
-        데이터셋을 로드하고 훈련, 검증, 테스트 데이터셋으로 나누는 함수
-
-        Args:
-            config (dict): 데이터셋 경로 및 관련 설정을 포함하는 딕셔너리
-            question_model (torch.nn.Module): 질문 임베딩을 위한 모델 (예: Codet5)
-            device (str): 'cuda' 또는 'cpu'
-            cross (bool): 교차 도메인 실험 여부를 나타내는 flag
-
-        Returns:
-            train_dataset (Subset): 훈련 데이터셋
-            val_dataset (Subset): 검증 데이터셋
-            test_dataset (Subset): 테스트 데이터셋
-    """
     target_file_path = config['targets']
     target_dict = load_targets(target_file_path)
     
@@ -1415,39 +1327,21 @@ def load_and_sample_dataset(config, question_model, device, cross):
 
 
 def prepare_and_split_data_loaders(dataset_configs, question_model, batch_size=4, shuffle=False, device='cuda', cross=False, dataset_key=None):
-    """
-        dataset_configs을 사용하여 데이터 로더를 준비하고 분할
-        
-        Args:
-            dataset_configs (딕셔너리): 데이터셋 경로와 샘플링 비율을 포함
-            question_model: codet5 embedder
-            batch_size (int): DataLoader의 배치 크기.
-            shuffle (bool): 데이터를 셔플할지 여부.
-            device (str): 데이터를 로드할 장치 ('cuda' 또는 'cpu').
-            cross (bool): False = in-domain, True = cross-domain
-            dataset_key (str or list): 데이터셋의 키 (하나 또는 여러 개 가능)
-        
-        Returns:
-            train_loader: 학습 데이터로더
-            val_loader: 벨리데이션 데이터로더
-            test_loader: 테스트 데이터로더
-    """
     
-    # 여러 개의 dataset_key를 받을 수 있도록 처리
+    
     if isinstance(dataset_key, str):
-        dataset_key = [dataset_key]  # 단일 키일 경우 리스트로 변환
+        dataset_key = [dataset_key] 
     
     train_datasets = []
     val_datasets = []
     test_datasets = []
 
-    # dataset_key 리스트에 있는 각 키에 대해 데이터셋 로드
+    
     if cross == False:
         for key in dataset_key:
             if key not in dataset_configs:
                 raise ValueError(f"dataset_key '{key}'가 dataset_configs에 없습니다.")
             
-            # 해당 키에 맞는 데이터셋 로드
             single_config = dataset_configs[key]
             train_dataset, val_dataset, test_dataset = load_and_sample_dataset(single_config, question_model, device, cross)
             
@@ -1455,7 +1349,6 @@ def prepare_and_split_data_loaders(dataset_configs, question_model, batch_size=4
             val_datasets.append(val_dataset)
             test_datasets.append(test_dataset)
         
-        # 여러 개의 데이터셋을 결합
         combined_train_dataset = ConcatDataset(train_datasets)
         combined_val_dataset = ConcatDataset(val_datasets)
         combined_test_dataset = ConcatDataset(test_datasets)
@@ -1468,19 +1361,16 @@ def prepare_and_split_data_loaders(dataset_configs, question_model, batch_size=4
         return train_loader, val_loader, test_loader
     
     else:
-        # cross-domain 처리
-        last_key = dataset_key[-1]  # dataset_key 리스트의 마지막 항목을 test로 사용
-        for key in dataset_key[:-1]:  # 마지막을 제외한 모든 항목을 train에 사용
+        last_key = dataset_key[-1]  
+        for key in dataset_key[:-1]: 
             if key not in dataset_configs:
                 raise ValueError(f"dataset_key '{key}'가 dataset_configs에 없습니다.")
             
-            # 해당 키에 맞는 데이터셋 로드
             train_dataset, val_dataset = load_and_sample_dataset(dataset_configs[key], question_model, device, cross)
             print(f"Loaded train dataset '{key}' size: {len(train_dataset)}")  # 크기 출력
             train_datasets.append(train_dataset)
             val_datasets.append(val_dataset)
 
-        # 마지막 항목은 테스트 데이터셋으로 로드
         test_dataset, val_dataset = load_and_sample_dataset(dataset_configs[last_key], question_model, device, cross)
         test_datasets.append(test_dataset)
         test_datasets.append(val_dataset)
