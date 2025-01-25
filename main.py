@@ -71,14 +71,14 @@ class CustomLoss(nn.Module):
         all data are torch.float32
 
 
-        outputs = 모델 예측값 (batch size, 1)
-        targets = 타겟 (batch size, 1)
+        outputs = predicteion (batch size, 1)
+        targets = target (batch size, 1)
         anchor_out = anchor (batch size, # of submission, 512)
-        positive_out = positive sample (변수 이름 바꾸기) (batch size, 1, 512)
+        positive_out = positive sample (batch size, 1, 512)
         negative_out = negative sample (batch size, 1, 512)
         question_positive_out = question positive sample (batch size, 1, 512)
         question_negative_out = question_negative_sample (batch size, 1, 512)
-        codet5_loss = codet5 finetuning loss (training 함수에서 계산) (스칼라 텐서)
+        codet5_loss = codet5 finetuning loss (scalar)
         """
 
         if len(anchor_out.shape) == 3 and len(positive_out.shape) == 2:
@@ -124,23 +124,22 @@ class KnowledgeTracingTransformer(nn.Module):
 
     def forward(self, inputs, anchor, problem_text_positive_sample, problem_text_negative_sample, question_positive_sample, question_negative_sample, codet5_input_ids, codet5_attention_mask, codet5_targets):
         """
-        all data are torch.float32
+        All data are of type torch.float32.
 
-        inputs = 누적된 학생 문제 풀이 데이터 (batch size, n, 512) *n은 변동값
-        anchor = anchor (batch size, # of submission, 512)
-        problem_text_positive_sample = 문제 positive sample (변수 이름 바꾸기) (batch size, 1, 512)
-        problem_text_negative_sample = 문제 negative sample (batch size, 1, 512)
-        question_positive_sample = question positive sample (batch size, 1, 512)
-        question_negative_sample = question_negative_sample (batch size, 1, 512)
-        codet5_input_ids = 학생 질문 토큰 (batch size, 1, 512)
-        codet5_attention_masks = 학생 질문 어텐션 마스크 토큰 (batch size, 1, 512)
-        codet5_targets = 교사 응답 토큰 (batch size, 1, 512)
-        """ 
+        inputs: Accumulated student problem-solving data. Shape: (batch size, n, 512) *n varies.
+        anchor: Anchor embeddings. Shape: (batch size, # of submissions, 512)
+        problem_text_positive_sample: Positive sample for the problem text (variable name can be updated). Shape: (batch size, 1, 512)
+        problem_text_negative_sample: Negative sample for the problem text. Shape: (batch size, 1, 512)
+        question_positive_sample: Positive sample for the question. Shape: (batch size, 1, 512)
+        question_negative_sample: Negative sample for the question. Shape: (batch size, 1, 512)
+        codet5_input_ids: Student question tokens. Shape: (batch size, 1, 512)
+        codet5_attention_masks: Attention mask tokens for the student question. Shape: (batch size, 1, 512)
+        codet5_targets: Teacher response tokens. Shape: (batch size, 1, 512)
+        """
+
         outputs = self.process_embedding(inputs) #transformer encoder 통과한 결과물 [batch size, seq_length, 512]
 
-        ####### shape check done ##########
-        # 따라서, dim=1을 사용해 시퀀스의 길이를 줄이고, batch_size x feature_size 형태의 출력을 얻어 이후 예측에 사용
-        prediction = self.output_layer(torch.max(outputs, dim=1)[0]) # max pooling 후 predict layer 통과 #
+        prediction = self.output_layer(torch.max(outputs, dim=1)[0])
         #torch.max(outputs, dim=1)[0] ([batch size, 512])
         #prediction shape: [batch size, 1]
 
@@ -148,9 +147,7 @@ class KnowledgeTracingTransformer(nn.Module):
             codet5_input_ids = codet5_input_ids.long()
             codet5_targets = codet5_targets.long()
 
-            # codet5 loss 계산
             codet5_logits = self.question_model(input_ids=codet5_input_ids, attention_mask=codet5_attention_mask, labels=codet5_targets).logits
-            #codet5_loss shape: 스칼라텐서
 
             return prediction, codet5_logits, anchor, problem_text_positive_sample, problem_text_negative_sample, question_positive_sample, question_negative_sample, codet5_targets #train
         else:
@@ -158,14 +155,16 @@ class KnowledgeTracingTransformer(nn.Module):
 
     def process_embedding(self, inputs):
         """
-        입력 시퀀스를 임베딩하고, transformer encoder layer를 통과시켜 출력을 생성하는 함수
+        Function to embed the input sequence and pass it through the transformer encoder layers to generate outputs.
         
         Args:
-            inputs (Tensor): 입력 데이터, shape은 [batch_size, sequence_length, 512]이며, sequence_length가 매우 클 수 있음
+            inputs (Tensor): Input data with shape [batch_size, sequence_length, 512], where sequence_length can be very large.
 
         Returns:
-            Tensor: transformer encoder layer를 통과한 최종 임베딩된 입력, shape은 [batch_size, max_sequence_length, embedding_dim]
-        """ 
+            Tensor: Final embedded inputs after passing through the transformer encoder layers. 
+                    Shape: [batch_size, max_sequence_length, embedding_dim]
+        """
+
         max_sequence_length = 1024
         inputs = inputs = inputs[:, -max_sequence_length:, :] 
         src_mask = self.create_padding_mask(inputs)
@@ -178,38 +177,40 @@ class KnowledgeTracingTransformer(nn.Module):
     
     def create_padding_mask(self, seq):
         """
-        seq는 [batch_size, sequence_length, hidden_size] 형태.
-        패딩 여부를 판단하기 위해 hidden_size를 무시하고 sequence_length만 사용해야 함.
-        여기서는 seq의 첫 번째 hidden dimension만을 사용하여 패딩 마스크를 생성.
+        The input `seq` has the shape [batch_size, sequence_length, hidden_size].
+        To determine the padding mask, only the sequence_length dimension is considered, ignoring hidden_size.
+        The mask is created using the first hidden dimension of `seq`.
 
-        1. seq.sum(dim=-1)
-        hidden_size 차원을 따라 합계를 계산
-        [batch_size, sequence_length, hidden_size] -> [batch_size, sequence_length]
-        패딩된 위치는 모든 값이 0이므로 합계도 0
+        Steps:
+        1. seq.sum(dim=-1):
+           Calculates the sum along the hidden_size dimension.
+           Shape transformation: [batch_size, sequence_length, hidden_size] -> [batch_size, sequence_length].
+           Padded positions (all zero values) will result in a sum of 0.
 
-        2. (seq.sum(dim=-1) != 0)
-        합계가 0이 아닌 위치는 True (실제 데이터)
-        합계가 0인 위치는 False (패딩)
-        [batch_size, sequence_length] 형태의 불리언 마스크
+        2. (seq.sum(dim=-1) != 0):
+           Creates a boolean mask where positions with a sum not equal to 0 are marked as True (actual data),
+           and positions with a sum of 0 are marked as False (padding).
+           Shape: [batch_size, sequence_length].
 
-        3. unsqueeze(1).unsqueeze(2)
-        attention 계산을 위해 차원 추가
-        [batch_size, sequence_length] -> [batch_size, 1, 1, sequence_length]
+        3. unsqueeze(1).unsqueeze(2):
+           Adds dimensions for attention calculation.
+           Shape transformation: [batch_size, sequence_length] -> [batch_size, 1, 1, sequence_length].
         """
         mask = (seq.sum(dim=-1) != 0).unsqueeze(1).unsqueeze(2)
         return mask
 
 def calculate_metrics(outputs, labels):
     """
-    모델의 예측 결과에 대한 성능 계산 함수
+    Function to calculate the performance metrics for the model's predictions.
 
     Args:
-        outputs (list or tensor): 모델의 예측 결과 (확률값)
-        labels (list or tensor): 실제 정답 라벨 (0 또는 1로 제공)
+        outputs (list or tensor): Model's prediction outputs (probability values).
+        labels (list or tensor): Ground truth labels (provided as 0 or 1).
 
     Returns:
-        tuple: accuracy, precision, recall, f1, auc 점수들의 튜플
+        tuple: A tuple containing accuracy, precision, recall, F1 score, and AUC score.
     """
+
     outputs = torch.tensor(outputs).numpy()
     labels = torch.tensor(labels).numpy()
     labels = labels.astype(int)
@@ -307,7 +308,7 @@ def main():
     tokenizer_name: default='Salesforce/codet5-small'
     """
 
-    # 모델 파라미터
+    # model parameter
     vocab_size = config.vocab_size
     d_model = config.d_model #model embedding dimension size (default = 512)
     num_heads = config.num_heads #number of attention heads in multi-head attention (default = 8)
@@ -317,7 +318,7 @@ def main():
     max_len = config.max_len #maximum sequence length that transformer encoder handle (default = 1024)
     ########################
 
-    # 학습 파라미터
+    # training parameter
     device = config.device
     learning_rate = config.learning_rate
     num_epochs = config.num_epochs
@@ -330,11 +331,7 @@ def main():
     question_model.resize_token_embeddings(len(question_tokenizer))
 
     dataset_configs = {
-        # exercises: 문제 정보 파일
-        # submissions: 학생 문제 제출 파일
-        # questions: 학생 질문 파일
-        # targets: 타겟 파일
-        # sampling_ratio: cross domain 실험 시 random sampling ratio
+        
             "18873": {
                 "exercises": "/home/doyounkim/Transformer/data/18873/18873_pre_dropone.csv",
                 "submissions": "/home/doyounkim/Transformer/data/18873/18873_exercises_skill.csv",
@@ -381,7 +378,7 @@ def main():
     model = KnowledgeTracingTransformer(vocab_size, d_model, num_heads, num_layers, ffn_hidden, dropout_rate, max_len, device, question_model, question_tokenizer)
     model.to(device)
 
-    # 손실 함수와 옵티마이저 설정
+
     custom_loss = CustomLoss(margin=1.0)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     criterion = nn.BCELoss() 
