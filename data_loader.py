@@ -38,7 +38,7 @@ class SkillDataset(Dataset):
         text_file_path: problem text data
         help_center_path: students' questions data
         target_dict: target data
-        question_model: codet5 (shared with main.py file, main.py에서 codet5 auxiliary task loss계산을 하고 data_loader.py파일에서 임베딩을 해야하기 때문에)
+        question_model: codet5 (shared with main.py file)
         device: cuda or cpu
         debug: debug option
         """
