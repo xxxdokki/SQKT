@@ -1384,10 +1384,10 @@ def prepare_and_split_data_loaders(dataset_configs, question_model, batch_size=4
         last_key = dataset_key[-1]  
         for key in dataset_key[:-1]: 
             if key not in dataset_configs:
-                raise ValueError(f"dataset_key '{key}'가 dataset_configs에 없습니다.")
+                raise ValueError(f"dataset_key '{key}'is not in dataset.")
             
             train_dataset, val_dataset = load_and_sample_dataset(dataset_configs[key], question_model, device, cross)
-            print(f"Loaded train dataset '{key}' size: {len(train_dataset)}")  # 크기 출력
+            print(f"Loaded train dataset '{key}' size: {len(train_dataset)}") 
             train_datasets.append(train_dataset)
             val_datasets.append(val_dataset)
 
@@ -1427,29 +1427,25 @@ def debug():
                 "exercises": "/home/Transformer/data/18873/18873_pre_dropone.csv",
                 "submissions": "/home/Transformer/data/18873/18873_exercises_skill.csv",
                 "questions": "/home/Transformer/data/18873/18873_helpcenter_log_skill.csv",
-                "targets": "/home/Transformer/data/18873/18873_final_scores.csv",
-                "sampling_ratio": 0.01
+                "targets": "/home/Transformer/data/18873/18873_final_scores.csv"
             },
             "18818": {
                 "exercises": "/home/Transformer/data/18818/18818_pre_dropone.csv",
                 "submissions": "/home/Transformer/data/18818/18818_exercises_skill.csv",
                 "questions": "/home/Transformer/data/18818/18818_helpcenter_log_skill.csv",
-                "targets": "/home/Transformer/data/18818/18818_final_scores.csv",
-                "sampling_ratio": 1
+                "targets": "/home/Transformer/data/18818/18818_final_scores.csv"
             },
             "18945": {
                 "exercises": "/home/Transformer/data/18945/18945_pre_dropone.csv",
                 "submissions": "/home/Transformer/data/18945/18945_exercises_skill.csv",
                 "questions": "/home/Transformer/data/18945/18945_helpcenter_log_skill.csv",
-                "targets": "/home/Transformer/data/18945/18945_final_scores.csv",
-                "sampling_ratio": 0.1
+                "targets": "/home/Transformer/data/18945/18945_final_scores.csv"
             }, 
             "18888": {
                 "exercises": "/home/Transformer/data/18888/18888_pre_dropone.csv",
                 "submissions": "/home/Transformer/data/18888/18888_exercises_skill.csv",
                 "questions": "/home/Transformer/data/18888/18888_helpcenter_log_skill.csv",
-                "targets": "/home/Transformer/data/18888/18888_final_scores.csv",
-                "sampling_ratio": 1
+                "targets": "/home/Transformer/data/18888/18888_final_scores.csv"
             }
         }
     
