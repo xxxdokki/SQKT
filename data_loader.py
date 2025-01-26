@@ -1306,6 +1306,8 @@ def get_indices_for_users(users):
 def load_and_sample_dataset(config, question_model, device, cross):
     target_file_path = config['targets']
     target_dict = load_targets(target_file_path)
+
+    
     
     dataset = SkillDataset(
         config['exercises'],
@@ -1316,6 +1318,9 @@ def load_and_sample_dataset(config, question_model, device, cross):
         device=device,
         debug=False
     )
+    
+    unique_users = list(set(dataset.code_df['x_user_id']))
+    num_users = len(unique_users)
     
     if cross == False:
         train_users, temp_users = train_test_split(unique_users, test_size=0.2, shuffle = False)
