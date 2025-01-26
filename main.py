@@ -64,8 +64,7 @@ class CustomLoss(nn.Module):
         self.margin = margin
         self.triplet_loss = TripletLoss(margin)
         self.prediction_loss = nn.BCELoss()
-        self.codet5_loss = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id if tokenizer else -100) #패딩토큰 무시
-
+        self.codet5_loss = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id if tokenizer else -100) 
     def forward(self, outputs, targets, anchor_out, positive_out, negative_out, question_positive_out, question_negative_out, codet5_logits, codet5_targets):
         """
         all data are torch.float32
@@ -137,8 +136,7 @@ class KnowledgeTracingTransformer(nn.Module):
         codet5_targets: Teacher response tokens. Shape: (batch size, 1, 512)
         """
 
-        outputs = self.process_embedding(inputs) #transformer encoder 통과한 결과물 [batch size, seq_length, 512]
-
+        outputs = self.process_embedding(inputs)
         prediction = self.output_layer(torch.max(outputs, dim=1)[0])
         #torch.max(outputs, dim=1)[0] ([batch size, 512])
         #prediction shape: [batch size, 1]
@@ -333,31 +331,31 @@ def main():
     dataset_configs = {
         
             "18873": {
-                "exercises": "/home/doyounkim/Transformer/data/18873/18873_pre_dropone.csv",
-                "submissions": "/home/doyounkim/Transformer/data/18873/18873_exercises_skill.csv",
-                "questions": "/home/doyounkim/Transformer/data/18873/18873_helpcenter_log_skill.csv",
-                "targets": "/home/doyounkim/Transformer/data/18873/18873_final_scores.csv",
+                "exercises": "/home/Transformer/data/18873/18873_pre_dropone.csv",
+                "submissions": "/home/Transformer/data/18873/18873_exercises_skill.csv",
+                "questions": "/home/Transformer/data/18873/18873_helpcenter_log_skill.csv",
+                "targets": "/home/ransformer/data/18873/18873_final_scores.csv",
                 "sampling_ratio": 0.01
             },
             "18818": {
-                "exercises": "/home/doyounkim/Transformer/data/18818/18818_pre_dropone.csv",
-                "submissions": "/home/doyounkim/Transformer/data/18818/18818_exercises_skill.csv",
-                "questions": "/home/doyounkim/Transformer/data/18818/18818_helpcenter_log_skill.csv",
-                "targets": "/home/doyounkim/Transformer/data/18818/18818_final_scores.csv",
+                "exercises": "/home/Transformer/data/18818/18818_pre_dropone.csv",
+                "submissions": "/home/Transformer/data/18818/18818_exercises_skill.csv",
+                "questions": "/home/Transformer/data/18818/18818_helpcenter_log_skill.csv",
+                "targets": "/home/Transformer/data/18818/18818_final_scores.csv",
                 "sampling_ratio": 1
             },
             "18945": {
-                "exercises": "/home/doyounkim/Transformer/data/18945/18945_pre_dropone.csv",
-                "submissions": "/home/doyounkim/Transformer/data/18945/18945_exercises_skill.csv",
-                "questions": "/home/doyounkim/Transformer/data/18945/18945_helpcenter_log_skill.csv",
-                "targets": "/home/doyounkim/Transformer/data/18945/18945_final_scores.csv",
+                "exercises": "/home/Transformer/data/18945/18945_pre_dropone.csv",
+                "submissions": "/home/Transformer/data/18945/18945_exercises_skill.csv",
+                "questions": "/home/Transformer/data/18945/18945_helpcenter_log_skill.csv",
+                "targets": "/home/Transformer/data/18945/18945_final_scores.csv",
                 "sampling_ratio": 0.1
             }, 
             "18888": {
-                "exercises": "/home/doyounkim/Transformer/data/18888/18888_pre_dropone.csv",
-                "submissions": "/home/doyounkim/Transformer/data/18888/18888_exercises_skill.csv",
-                "questions": "/home/doyounkim/Transformer/data/18888/18888_helpcenter_log_skill.csv",
-                "targets": "/home/doyounkim/Transformer/data/18888/18888_final_scores.csv",
+                "exercises": "/home/Transformer/data/18888/18888_pre_dropone.csv",
+                "submissions": "/home/Transformer/data/18888/18888_exercises_skill.csv",
+                "questions": "/home/Transformer/data/18888/18888_helpcenter_log_skill.csv",
+                "targets": "/home/Transformer/data/18888/18888_final_scores.csv",
                 "sampling_ratio": 1
             }
         }
