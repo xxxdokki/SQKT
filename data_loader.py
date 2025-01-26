@@ -130,7 +130,7 @@ class SkillDataset(Dataset):
         self.question_tokenizer = RobertaTokenizer.from_pretrained("Salesforce/codet5p-220m")
         self.code_model = RobertaModel.from_pretrained("microsoft/codebert-base").to(device)
         self.text_model = BertModel.from_pretrained('bert-base-uncased').to(device)
-        self.question_model = question_model.to(device) #question model의 경우 main.py에서 loss 계산해야하므로 두 파일에서 공유
+        self.question_model = question_model.to(device)
         self.resize_token_embeddings() 
 
 
@@ -326,7 +326,7 @@ class SkillDataset(Dataset):
                 if isinstance(submission_idx, int):
                     row = self.code_df.iloc[submission_idx]
                 else:
-                    row = self.code_df.iloc[submission_idx[1]]  #지우는거 고민
+                    row = self.code_df.iloc[submission_idx[1]] 
 
                 code_embedding = self._embed_code(row['contents']) #[1, 512]
                 code_embeddings.append(code_embedding) 
@@ -502,15 +502,15 @@ class SkillDataset(Dataset):
         }
         1. _get_indices(0):
 
-        count = 0, user_idx = 0, problem_idx = 0 (user1의 1001)
+        count = 0, user_idx = 0, problem_idx = 0 (user1's 1001)
         count == idx (0 == 0)
 
 
         2. _get_indices(2):
 
-        count = 0, user_idx = 0, problem_idx = 0 (user1의 1001)
-        count = 1, user_idx = 0, problem_idx = 1 (user1의 1002)
-        count = 2, user_idx = 0, problem_idx = 2 (user1의 1003)
+        count = 0, user_idx = 0, problem_idx = 0 (user1's 1001)
+        count = 1, user_idx = 0, problem_idx = 1 (user1's 1002)
+        count = 2, user_idx = 0, problem_idx = 2 (user1's 1003)
         count == idx (2 == 2)
 
 
@@ -1423,11 +1423,6 @@ def debug():
     question_model = T5ForConditionalGeneration.from_pretrained("Salesforce/codet5p-220m")
     question_model.resize_token_embeddings(len(question_tokenizer))
     dataset_configs = {
-        # exercises: 문제 정보 파일
-        # submissions: 학생 문제 제출 파일
-        # questions: 학생 질문 파일
-        # targets: 타겟 파일
-        # sampling_ratio: cross domain 실험 시 random sampling ratio
             "18873": {
                 "exercises": "/home/Transformer/data/18873/18873_pre_dropone.csv",
                 "submissions": "/home/Transformer/data/18873/18873_exercises_skill.csv",
