@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/home/doyounkim/sqkt')
+sys.path.append('/home/sqkt')
 import random
 import torch
 from torch import nn
@@ -334,29 +334,25 @@ def main():
                 "exercises": "/home/Transformer/data/18873/18873_pre_dropone.csv",
                 "submissions": "/home/Transformer/data/18873/18873_exercises_skill.csv",
                 "questions": "/home/Transformer/data/18873/18873_helpcenter_log_skill.csv",
-                "targets": "/home/ransformer/data/18873/18873_final_scores.csv",
-                "sampling_ratio": 0.01
+                "targets": "/home/ransformer/data/18873/18873_final_scores.csv"
             },
             "18818": {
                 "exercises": "/home/Transformer/data/18818/18818_pre_dropone.csv",
                 "submissions": "/home/Transformer/data/18818/18818_exercises_skill.csv",
                 "questions": "/home/Transformer/data/18818/18818_helpcenter_log_skill.csv",
-                "targets": "/home/Transformer/data/18818/18818_final_scores.csv",
-                "sampling_ratio": 1
+                "targets": "/home/Transformer/data/18818/18818_final_scores.csv"
             },
             "18945": {
                 "exercises": "/home/Transformer/data/18945/18945_pre_dropone.csv",
                 "submissions": "/home/Transformer/data/18945/18945_exercises_skill.csv",
                 "questions": "/home/Transformer/data/18945/18945_helpcenter_log_skill.csv",
-                "targets": "/home/Transformer/data/18945/18945_final_scores.csv",
-                "sampling_ratio": 0.1
+                "targets": "/home/Transformer/data/18945/18945_final_scores.csv"
             }, 
             "18888": {
                 "exercises": "/home/Transformer/data/18888/18888_pre_dropone.csv",
                 "submissions": "/home/Transformer/data/18888/18888_exercises_skill.csv",
                 "questions": "/home/Transformer/data/18888/18888_helpcenter_log_skill.csv",
-                "targets": "/home/Transformer/data/18888/18888_final_scores.csv",
-                "sampling_ratio": 1
+                "targets": "/home/Transformer/data/18888/18888_final_scores.csv"
             }
         }
     
