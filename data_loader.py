@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/home/doyounkim/sqkt')
+sys.path.append('/home/sqkt')
 
 import pandas as pd
 import numpy as np
@@ -1294,7 +1294,14 @@ def load_targets(target_file_path):
 
     return target_dict
 
-
+def get_indices_for_users(users):
+    indices = []
+    for idx in range(len(dataset)):
+        user_idx, _ = dataset._get_indices(idx)
+        user_id = list(dataset.user_problem_map.keys())[user_idx]
+        if user_id in users:
+            indices.append(idx)
+    return indices
 
 def load_and_sample_dataset(config, question_model, device, cross):
     target_file_path = config['targets']
@@ -1311,15 +1318,23 @@ def load_and_sample_dataset(config, question_model, device, cross):
     )
     
     if cross == False:
-        indices = list(range(len(dataset)))
-        train_indices, test_indices = train_test_split(indices, test_size=0.2, shuffle = False)
-        val_indices, test_indices = train_test_split(test_indices, test_size=0.5, shuffle = False)
+        train_users, temp_users = train_test_split(unique_users, test_size=0.2, shuffle = False)
+        val_users, test_users = train_test_split(temp_users, test_size=0.5, shuffle = False)
+        train_indices = get_indices_for_users(train_users)
+        val_indices = get_indices_for_users(val_users)
+        test_indices = get_indices_for_users(test_users)
+    
         train_dataset = Subset(dataset, train_indices)
         val_dataset = Subset(dataset, val_indices)
         test_dataset = Subset(dataset, test_indices)
         return train_dataset, val_dataset, test_dataset
     else:
-        indices = list(range(len(dataset)))
+        train_users, temp_users = train_test_split(unique_users, test_size=0.2, shuffle = False)
+        val_users, test_users = train_test_split(temp_users, test_size=0.5, shuffle = False)
+        train_indices = get_indices_for_users(train_users)
+        val_indices = get_indices_for_users(val_users)
+        test_indices = get_indices_for_users(test_users)
+        
         train_indices, test_indices = train_test_split(indices, test_size=0.2, shuffle = False)
         train_dataset = Subset(dataset, train_indices)
         test_dataset = Subset(dataset, test_indices)
@@ -1409,31 +1424,31 @@ def debug():
         # targets: 타겟 파일
         # sampling_ratio: cross domain 실험 시 random sampling ratio
             "18873": {
-                "exercises": "/home/doyounkim/Transformer/data/18873/18873_pre_dropone.csv",
-                "submissions": "/home/doyounkim/Transformer/data/18873/18873_exercises_skill.csv",
-                "questions": "/home/doyounkim/Transformer/data/18873/18873_helpcenter_log_skill.csv",
-                "targets": "/home/doyounkim/Transformer/data/18873/18873_final_scores.csv",
+                "exercises": "/home/Transformer/data/18873/18873_pre_dropone.csv",
+                "submissions": "/home/Transformer/data/18873/18873_exercises_skill.csv",
+                "questions": "/home/Transformer/data/18873/18873_helpcenter_log_skill.csv",
+                "targets": "/home/Transformer/data/18873/18873_final_scores.csv",
                 "sampling_ratio": 0.01
             },
             "18818": {
-                "exercises": "/home/doyounkim/Transformer/data/18818/18818_pre_dropone.csv",
-                "submissions": "/home/doyounkim/Transformer/data/18818/18818_exercises_skill.csv",
-                "questions": "/home/doyounkim/Transformer/data/18818/18818_helpcenter_log_skill.csv",
-                "targets": "/home/doyounkim/Transformer/data/18818/18818_final_scores.csv",
+                "exercises": "/home/Transformer/data/18818/18818_pre_dropone.csv",
+                "submissions": "/home/Transformer/data/18818/18818_exercises_skill.csv",
+                "questions": "/home/Transformer/data/18818/18818_helpcenter_log_skill.csv",
+                "targets": "/home/Transformer/data/18818/18818_final_scores.csv",
                 "sampling_ratio": 1
             },
             "18945": {
-                "exercises": "/home/doyounkim/Transformer/data/18945/18945_pre_dropone.csv",
-                "submissions": "/home/doyounkim/Transformer/data/18945/18945_exercises_skill.csv",
-                "questions": "/home/doyounkim/Transformer/data/18945/18945_helpcenter_log_skill.csv",
-                "targets": "/home/doyounkim/Transformer/data/18945/18945_final_scores.csv",
+                "exercises": "/home/Transformer/data/18945/18945_pre_dropone.csv",
+                "submissions": "/home/Transformer/data/18945/18945_exercises_skill.csv",
+                "questions": "/home/Transformer/data/18945/18945_helpcenter_log_skill.csv",
+                "targets": "/home/Transformer/data/18945/18945_final_scores.csv",
                 "sampling_ratio": 0.1
             }, 
             "18888": {
-                "exercises": "/home/doyounkim/Transformer/data/18888/18888_pre_dropone.csv",
-                "submissions": "/home/doyounkim/Transformer/data/18888/18888_exercises_skill.csv",
-                "questions": "/home/doyounkim/Transformer/data/18888/18888_helpcenter_log_skill.csv",
-                "targets": "/home/doyounkim/Transformer/data/18888/18888_final_scores.csv",
+                "exercises": "/home/Transformer/data/18888/18888_pre_dropone.csv",
+                "submissions": "/home/Transformer/data/18888/18888_exercises_skill.csv",
+                "questions": "/home/Transformer/data/18888/18888_helpcenter_log_skill.csv",
+                "targets": "/home/Transformer/data/18888/18888_final_scores.csv",
                 "sampling_ratio": 1
             }
         }
